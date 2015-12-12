@@ -31,5 +31,13 @@
             android:summaryOn="@string/preferences_dark_canvas_on"
             android:summaryOff="@string/preferences_dark_canvas_off" />
 
+        <EditTextPreference
+            android:defaultValue="1"
+            android:key="button_pressure_preference"
+            android:inputType="number"
+            android:title="@string/preferences_button_pressure"
+            android:summary="@string/preferences_button_pressure_summary"
+            android:numeric="integer" />
+
     </PreferenceCategory>
 </PreferenceScreen>

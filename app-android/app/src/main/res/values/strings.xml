@@ -24,5 +24,7 @@
     <string name="preferences_keep_display_active">Keep display active</string>
     <string name="preferences_keep_display_active_on">Display won\'t turn off while GfxTablet is active</string>
     <string name="preferences_keep_display_active_off">Display will turn off according to system settings</string>
+    <string name="preferences_button_pressure">Button pressure threshold</string>
+    <string name="preferences_button_pressure_summary">How much pressure is necessary to trigger a button event</string>
 
 </resources>
