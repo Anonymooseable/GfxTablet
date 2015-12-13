@@ -2,6 +2,8 @@ TARGET = networktablet
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
 
+all: networktablet test uinput-sample
+
 networktablet : networktablet.c
 
 clean :

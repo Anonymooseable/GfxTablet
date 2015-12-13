@@ -30,9 +30,9 @@ void init_device(int fd)
     if (ioctl(fd, UI_SET_EVBIT, EV_SYN) < 0)
         die("error: ioctl UI_SET_EVBIT EV_SYN");
 
-    // enable 1 button
     if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0)
         die("error: ioctl UI_SET_EVBIT EV_KEY");
+    /*
     if (ioctl(fd, UI_SET_KEYBIT, BTN_TOUCH) < 0)
         die("error: ioctl UI_SET_KEYBIT");
     if (ioctl(fd, UI_SET_KEYBIT, BTN_TOOL_PEN) < 0)
@@ -40,8 +40,12 @@ void init_device(int fd)
     if (ioctl(fd, UI_SET_KEYBIT, BTN_STYLUS) < 0)
         die("error: ioctl UI_SET_KEYBIT");
     if (ioctl(fd, UI_SET_KEYBIT, BTN_STYLUS2) < 0)
+        die("error: ioctl UI_SET_KEYBIT");*/
+    if (ioctl(fd, UI_SET_KEYBIT, BTN_LEFT) < 0) {
         die("error: ioctl UI_SET_KEYBIT");
+    }
 
+    /*
     // enable 2 main axes + pressure (absolute positioning)
     if (ioctl(fd, UI_SET_EVBIT, EV_ABS) < 0)
         die("error: ioctl UI_SET_EVBIT EV_ABS");
@@ -51,6 +55,14 @@ void init_device(int fd)
         die("error: ioctl UI_SETEVBIT ABS_Y");
     if (ioctl(fd, UI_SET_ABSBIT, ABS_PRESSURE) < 0)
         die("error: ioctl UI_SETEVBIT ABS_PRESSURE");
+        */
+
+    if (ioctl(fd, UI_SET_EVBIT, EV_REL) < 0)
+        die("error: ioctl UI_SET_EVBIT EV_REL");
+    if (ioctl(fd, UI_SET_RELBIT, REL_X) < 0)
+        die("error: ioctl UI_SETEVBIT REL_X");
+    if (ioctl(fd, UI_SET_RELBIT, REL_Y) < 0)
+        die("error: ioctl UI_SETEVBIT REL_Y");
 
     memset(&uidev, 0, sizeof(uidev));
     snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "Network Tablet");
@@ -92,10 +104,11 @@ int prepare_socket()
 
 void send_event(int device, int type, int code, int value)
 {
-    struct input_event ev;
-    ev.type = type;
-    ev.code = code;
-    ev.value = value;
+    struct input_event ev = {
+        .type = type,
+        .code = code,
+        .value = value
+    };
     if (write(device, &ev, sizeof(ev)) < 0)
         die("error: write()");
 }
@@ -108,6 +121,8 @@ void quit(int signal) {
 int main(void)
 {
     int device;
+    int vx = 0, vy = 0, vz = 0;
+    short ax, ay, az;
     struct event_packet ev_pkt;
 
     if ((device = open("/dev/uinput", O_WRONLY | O_NONBLOCK)) < 0)
@@ -123,7 +138,6 @@ int main(void)
     signal(SIGTERM, quit);
 
     while (recv(udp_socket, &ev_pkt, sizeof(ev_pkt), 0) >= 9) {        // every packet has at least 9 bytes
-        printf("."); fflush(0);
 
         if (memcmp(ev_pkt.signature, "GfxTablet", 9) != 0) {
             fprintf(stderr, "\nGot unknown packet on port %i, ignoring\n", GFXTABLET_PORT);
@@ -139,17 +153,30 @@ int main(void)
         ev_pkt.x = ntohs(ev_pkt.x);
         ev_pkt.y = ntohs(ev_pkt.y);
         ev_pkt.pressure = ntohs(ev_pkt.pressure);
-        printf("x: %hu, y: %hu, pressure: %hu\n", ev_pkt.x, ev_pkt.y, ev_pkt.pressure);
 
-        send_event(device, EV_ABS, ABS_X, ev_pkt.x);
-        send_event(device, EV_ABS, ABS_Y, ev_pkt.y);
-        send_event(device, EV_ABS, ABS_PRESSURE, ev_pkt.pressure);
+        ax = ev_pkt.x;
+        ay = ev_pkt.y;
+#define SHIFT 10
+        ax >>= SHIFT;
+        ay >>= SHIFT;
+#define THRESH 4
+        ax = (abs(ax) > THRESH) ? ax : 0;
+        ay = (abs(ay) > THRESH) ? ay : 0;
 
+        vx += ax;
+        vy += ay;
+#define decrease(x) x += (x<0)?1:0 //(x>0)?-3:0
+        decrease(vx);
+        decrease(vy);
+        printf("vx %5d; vy %5d; ax %5d; ay %5d\n", vx, vy, ax, ay);
         switch (ev_pkt.type) {
-            case EVENT_TYPE_MOTION:
-                send_event(device, EV_SYN, SYN_REPORT, 1);
-                break;
+            /*
             case EVENT_TYPE_BUTTON:
+                printf("x: %hu, y: %hu, pressure: %hu\n", ev_pkt.x, ev_pkt.y, ev_pkt.pressure);
+                send_event(device, EV_ABS, ABS_X, ev_pkt.x);
+                send_event(device, EV_ABS, ABS_Y, ev_pkt.y);
+                send_event(device, EV_ABS, ABS_PRESSURE, ev_pkt.pressure);
+                send_event(device, EV_SYN, SYN_REPORT, 1);
                 // stylus hovering
                 if (ev_pkt.button == -1)
                     send_event(device, EV_KEY, BTN_TOOL_PEN, ev_pkt.down);
@@ -165,7 +192,22 @@ int main(void)
                 printf("sent button: %hhi, %hhu\n", ev_pkt.button, ev_pkt.down);
                 send_event(device, EV_SYN, SYN_REPORT, 1);
                 break;
-
+            case EVENT_TYPE_MOTION:
+                printf("x: %hu, y: %hu, pressure: %hu\n", ev_pkt.x, ev_pkt.y, ev_pkt.pressure);
+                send_event(device, EV_ABS, ABS_X, ev_pkt.x);
+                send_event(device, EV_ABS, ABS_Y, ev_pkt.y);
+                send_event(device, EV_ABS, ABS_PRESSURE, ev_pkt.pressure);
+                send_event(device, EV_SYN, SYN_REPORT, 1);
+                break;
+                */
+            case EVENT_TYPE_MOTION3D:
+                send_event(device, EV_REL, REL_X, vx);
+                send_event(device, EV_REL, REL_Y, vy);
+                send_event(device, EV_SYN, SYN_REPORT, 1);
+                break;
+            default:
+                //printf("Unknown event type: %d\n", ev_pkt.type);
+                break;
         }
     }
     close(udp_socket);

@@ -1,10 +1,13 @@
 package at.bitfire.gfxtablet;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -33,6 +36,7 @@ public class CanvasActivity extends AppCompatActivity implements View.OnSystemUi
     SharedPreferences preferences;
     boolean fullScreen = false;
 
+    private SensorDataClient sensorClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,11 +55,17 @@ public class CanvasActivity extends AppCompatActivity implements View.OnSystemUi
         // notify CanvasView of the network client
         CanvasView canvas = (CanvasView)findViewById(R.id.canvas);
         canvas.setNetworkClient(netClient);
+
+        SensorManager sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+        if (sensorManager != null) {
+            sensorClient = new SensorDataClient(sensorManager, netClient);
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        sensorClient.resume();
 
         if (preferences.getBoolean(SettingsActivity.KEY_KEEP_DISPLAY_ACTIVE, true))
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -63,6 +73,12 @@ public class CanvasActivity extends AppCompatActivity implements View.OnSystemUi
             getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         showTemplateImage();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        sensorClient.suspend();
     }
 
     @Override
