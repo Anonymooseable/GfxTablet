@@ -10,6 +10,8 @@ public class NetEvent {
     enum Type {
         TYPE_MOTION((byte)0),
         TYPE_BUTTON((byte)1),
+        TYPE_RELMOTION((byte)2),
+        TYPE_RELBUTTON((byte)3),
 
         // not specified in protocol, only needed to shut down network thread
         TYPE_DISCONNECT((byte)255);
@@ -58,7 +60,7 @@ public class NetEvent {
             dos.writeShort(y);
             dos.writeShort(pressure);
 
-            if (type == Type.TYPE_BUTTON) {
+            if (type == Type.TYPE_BUTTON || type == Type.TYPE_RELBUTTON) {
                 dos.writeByte(button);
                 dos.writeByte(button_down);
             }

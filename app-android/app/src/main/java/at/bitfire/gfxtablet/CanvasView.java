@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.Vibrator;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.util.AttributeSet;
@@ -25,9 +26,11 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
 
     final SharedPreferences settings;
     NetworkClient netClient;
-    boolean acceptStylusOnly;
-    int maxX, maxY;
+    boolean acceptStylusOnly, relative, pressed;
+    int maxX, maxY, buttonPressure;
+    float oldX, oldY, relSensitivity;
     InRangeStatus inRangeStatus;
+    Vibrator vibrator;
 
 
     // setup
@@ -43,6 +46,7 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
         setBackground();
         setInputMethods();
         inRangeStatus = InRangeStatus.OutOfRange;
+        vibrator = null;
     }
 
     public void setNetworkClient(NetworkClient networkClient) {
@@ -50,6 +54,9 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
         setEnabled(true);
     }
 
+    public void setVibrator(Vibrator v) {
+        vibrator = v;
+    }
 
     // settings
 
@@ -62,6 +69,9 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
 
     protected void setInputMethods() {
         acceptStylusOnly = settings.getBoolean(SettingsActivity.KEY_PREF_STYLUS_ONLY, false);
+        relative = settings.getBoolean(SettingsActivity.KEY_RELATIVE_MODE, false);
+        buttonPressure = Integer.parseInt(settings.getString(SettingsActivity.KEY_BUTTON_PRESSURE, "15000"));
+        relSensitivity = Float.parseFloat(settings.getString(SettingsActivity.KEY_REL_SENSITIVITY, "1")) * 1e-7f;
     }
 
     @Override
@@ -92,7 +102,7 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
             for (int ptr = 0; ptr < event.getPointerCount(); ptr++)
                 if (!acceptStylusOnly || (event.getToolType(ptr) == MotionEvent.TOOL_TYPE_STYLUS)) {
                     short nx = normalizeX(event.getX(ptr)),
-                            ny = normalizeY(event.getY(ptr)),
+                          ny = normalizeY(event.getY(ptr)),
                             npressure = normalizePressure(event.getPressure(ptr));
                     Log.v(TAG, String.format("Generic motion event logged: %f|%f, pressure %f", event.getX(ptr), event.getY(ptr), event.getPressure(ptr)));
                     switch (event.getActionMasked()) {
@@ -116,12 +126,39 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
 
     @Override
     public boolean onTouchEvent(@NonNull MotionEvent event) {
-        if (isEnabled()) {
-            for (int ptr = 0; ptr < event.getPointerCount(); ptr++)
+        if (!isEnabled())
+            return false;
+        if (relative) {
+            short dx, dy, npressure;
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                dx = 0;
+                dy = 0;
+            } else {
+                dx = normalizeRel(event.getX() - oldX);
+                dy = normalizeRel(event.getY() - oldY);
+            }
+            npressure = normalizePressure(event.getPressure());
+            netClient.getQueue().add(new NetEvent(Type.TYPE_RELMOTION, dx, dy, npressure));
+            if (npressure > buttonPressure && !pressed) {
+                netClient.getQueue().add(new NetEvent(Type.TYPE_RELBUTTON, (short)0, (short)0, npressure, 0, true));
+                pressed = true;
+                if (vibrator != null)
+                    vibrator.vibrate(20);
+            } else if ((npressure < buttonPressure || event.getActionMasked() == MotionEvent.ACTION_UP) && pressed) {
+                netClient.getQueue().add(new NetEvent(Type.TYPE_RELBUTTON, (short)0, (short)0, npressure, 0, false));
+                pressed = false;
+                if (vibrator != null)
+                    vibrator.vibrate(20);
+            }
+            oldX = event.getX();
+            oldY = event.getY();
+        }
+        else {
+            for (int ptr = 0; ptr < event.getPointerCount(); ptr++) {
+                short nx = normalizeX(event.getX(ptr)),
+                      ny = normalizeY(event.getY(ptr)),
+                      npressure = normalizePressure(event.getPressure(ptr));
                 if (!acceptStylusOnly || (event.getToolType(ptr) == MotionEvent.TOOL_TYPE_STYLUS)) {
-                    short nx = normalizeX(event.getX(ptr)),
-                          ny = normalizeY(event.getY(ptr)),
-                          npressure = normalizePressure(event.getPressure(ptr));
                     Log.v(TAG, String.format("Touch event logged: action %d @ %f|%f (pressure %f)", event.getActionMasked(), event.getX(ptr), event.getY(ptr), event.getPressure(ptr)));
                     switch (event.getActionMasked()) {
                     case MotionEvent.ACTION_MOVE:
@@ -143,11 +180,10 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
                         }
                         break;
                     }
-
                 }
-            return true;
+            }
         }
-        return false;
+        return true;
     }
 
     // these overflow and wrap around to negative short values, but thankfully Java will continue
@@ -162,6 +198,10 @@ public class CanvasView extends View implements SharedPreferences.OnSharedPrefer
 
     short normalizePressure(float x) {
         return (short)(Math.min(Math.max(0, x), 2.0) * Short.MAX_VALUE);
+    }
+
+    short normalizeRel(float x) {
+        return (short)(x * Short.MAX_VALUE*relSensitivity);
     }
 
 }

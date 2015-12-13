@@ -1,5 +1,6 @@
 package at.bitfire.gfxtablet;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -9,6 +10,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.provider.MediaStore;
@@ -48,9 +50,12 @@ public class CanvasActivity extends AppCompatActivity implements View.OnSystemUi
         new Thread(netClient).start();
         new ConfigureNetworkingTask().execute();
 
+        Vibrator vib = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+
         // notify CanvasView of the network client
         CanvasView canvas = (CanvasView)findViewById(R.id.canvas);
         canvas.setNetworkClient(netClient);
+        canvas.setVibrator(vib);
     }
 
     @Override

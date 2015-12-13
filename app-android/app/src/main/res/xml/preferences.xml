@@ -39,5 +39,20 @@
             android:summary="@string/preferences_button_pressure_summary"
             android:numeric="integer" />
 
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="relative_mode_preference"
+            android:title="@string/preferences_relative_mode"
+            android:summaryOn="@string/preferences_relative_mode_summary_on"
+            android:summaryOff="@string/preferences_relative_mode_summary_off" />
+
+        <EditTextPreference
+            android:defaultValue="1"
+            android:key="rel_sensitivity_preference"
+            android:inputType="number"
+            android:title="@string/preferences_rel_sensitivity"
+            android:summary="@string/preferences_rel_sensitivity_summary"
+            android:numeric="decimal" />
+
     </PreferenceCategory>
 </PreferenceScreen>

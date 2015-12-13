@@ -26,5 +26,10 @@
     <string name="preferences_keep_display_active_off">Display will turn off according to system settings</string>
     <string name="preferences_button_pressure">Button pressure threshold</string>
     <string name="preferences_button_pressure_summary">How much pressure is necessary to trigger a button event</string>
+    <string name="preferences_relative_mode">Relative mode</string>
+    <string name="preferences_relative_mode_summary_on">Behave like a trackpad</string>
+    <string name="preferences_relative_mode_summary_off">Behave like a graphics tablet</string>
+    <string name="preferences_rel_sensitivity">Sensitivity</string>
+    <string name="preferences_rel_sensitivity_summary">How fast the cursor moves in relative mode</string>
 
 </resources>

@@ -1,6 +1,7 @@
 TARGET = networktablet
 PREFIX = /usr/local
 BINDIR = $(PREFIX)/bin
+CFLAGS=-g
 
 networktablet : networktablet.c
 

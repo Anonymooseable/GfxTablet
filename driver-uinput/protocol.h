@@ -6,8 +6,12 @@
 #pragma pack(push)
 #pragma pack(1)
 
-#define EVENT_TYPE_MOTION 0
-#define EVENT_TYPE_BUTTON 1
+enum event_type {
+    EVENT_TYPE_MOTION = 0,
+    EVENT_TYPE_BUTTON = 1,
+    EVENT_TYPE_RELMOTION = 2,
+    EVENT_TYPE_RELBUTTON = 3
+};
 
 struct event_packet
 {
