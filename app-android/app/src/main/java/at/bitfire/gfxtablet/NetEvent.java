@@ -8,11 +8,15 @@ import java.io.IOException;
 
 public class NetEvent {
     enum Type {
-        TYPE_MOTION,
-        TYPE_BUTTON,
+        TYPE_MOTION((byte)0),
+        TYPE_BUTTON((byte)1),
 
         // not specified in protocol, only needed to shut down network thread
-        TYPE_DISCONNECT
+        TYPE_DISCONNECT((byte)255);
+        public final byte proto_value;
+        Type(byte pv) {
+            proto_value = pv;
+        }
     }
     static final String signature = "GfxTablet";
     static final short protocol_version = 2;
@@ -49,17 +53,7 @@ public class NetEvent {
         try {
             dos.writeBytes(signature);
             dos.writeShort(protocol_version);
-
-            switch (type) {
-            case TYPE_MOTION:
-                dos.writeByte(0);
-                break;
-            case TYPE_BUTTON:
-                dos.writeByte(1);
-                break;
-            default:
-            }
-
+            dos.writeByte(type.proto_value);
             dos.writeShort(x);
             dos.writeShort(y);
             dos.writeShort(pressure);
